@@ -176,10 +176,10 @@ class ViewSetTestGeneratoBaser(abc.ABC):
         return tests
 
     def generate_tests(self) -> List[str]:
-        tests = []
-        for viewset_data in self.generate_viewset_data_from_router():
-            tests.append(self.generate_tests_for_viewset(viewset_data))
-        return tests
+        return [
+            self.generate_tests_for_viewset(viewset_data)
+            for viewset_data in self.generate_viewset_data_from_router()
+        ]
 
     def write_generated_tests_to_file(self, tests: List[str]) -> None:
         assert self.output_file
@@ -232,7 +232,7 @@ class UnitTestViewSetTestGenerator(ViewSetTestGeneratoBaser):
 
     @lru_cache(maxsize=7)  # noqa: B019
     def build_request(self, http_method: str) -> str:
-        if http_method in ["post", "put", "patch"]:
+        if http_method in {"post", "put", "patch"}:
             return f"self.client.{http_method}(url, data={{}})"
         return f"self.client.{http_method}(url)"
 
@@ -283,24 +283,20 @@ class PyTestViewSetTestGenerator(ViewSetTestGeneratoBaser):
 
     @lru_cache(maxsize=7)  # noqa: B019
     def build_request(self, http_method: str) -> str:
-        if http_method in ["post", "put", "patch"]:
+        if http_method in {"post", "put", "patch"}:
             return f"client.{http_method}(url, data={{}})"
         return f"client.{http_method}(url)"
 
     def build_test_method_args(self) -> str:
         args = ["client"]
 
-        for arg in self.pytest_fixtures:
-            args.append(arg)
-
+        args.extend(iter(self.pytest_fixtures))
         return ", ".join(args)
 
     def build_test_markers(self) -> str:
         markers = ["@pytest.mark.django_db"]
 
-        for marker in self.pytest_markers:
-            markers.append(f"@{marker}")
-
+        markers.extend(f"@{marker}" for marker in self.pytest_markers)
         return "\n".join(markers)
 
     def get_import_string(self) -> str:
